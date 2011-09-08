@@ -1,0 +1,4 @@
+Pd{ bang }
+TUPLE: pd|+ < (pd|arithmetic2) ;
+INLET: 1 float (pd|arithmetic2) rhs<< ;
+Pd[ + 7 ]
