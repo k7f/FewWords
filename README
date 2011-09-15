@@ -1,12 +1,2 @@
-
-Pd{ bang }  ! put a message on the stack
-
-TUPLE: pd|+ < (pd|arithmetic2) ;  ! declare a subclass
-INLET: 1 float (pd|arithmetic2) rhs<< ;  ! define a method
-
-Pd[ + 7 ]  ! put an object on the stack
-
-! There are three ways of replacing the 7 above with 4:
-4 over 1 push  ! the object is left on the stack
-1 inlet 4 push  ! the object is removed from the stack and gone
-1 "test" bind 4 "test" send  ! the object is removed from the stack but lives on
+FewWords is a vocabulary that assists in building and running simple
+PureData patches in Factor.
