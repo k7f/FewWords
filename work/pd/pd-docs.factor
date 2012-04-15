@@ -1,31 +1,46 @@
-USING: pd.private
-help.markup help.syntax layouts unicode.data
-kernel math sequences strings words words.symbol ;
+! Copyright (C) 2011 krzYszcz.
+! See http://factorcode.org/license.txt for BSD license.
+
+USING: help.markup help.syntax layouts unicode.data kernel math pd.private
+       sequences strings words words.symbol ;
 IN: pd
 
 HELP: string-or-number
-{ $values { "str" string } { "str/real" { $link string } " or " { $link real } } }
+{ $values
+  { "str" string }
+  { "str/real" { $link string } " or " { $link real } }
+}
 { $description "A no-op, unless a string is a valid representation of a number, in which case it is converted to that number." }
 { $errors "Any non-string input throws an error." }
 { $notes "Result is guaranteed not to be a complex number, because complex numbers have no string representation in Factor." } ;
 
 HELP: no-property
-{ $values { "word" word } { "name" "a property name" } }
+{ $values
+  { "word" word }
+  { "name" "a property name" }
+}
 { $description "Throws a " { $link no-property } " error." } 
 { $error-description "Thrown if an undefined property of a word is requested." } ;
 
 HELP: no-method
-{ $values { "pd" "Pd object" } { "selector" "Pd selector" } }
+{ $values
+  { "pd" "Pd object" }
+  { "selector" "Pd selector" }
+}
 { $description "Throws a " { $link no-method } " error." } 
 { $error-description "Thrown if a message is sent to a Pd object of a class which does not define a method for the message's selector." } ;
 
 HELP: bad-atom
-{ $values { "obj" object } }
+{ $values
+  { "obj" object }
+}
 { $description "Throws a " { $link bad-atom } " error." } 
 { $error-description "Thrown if an " { $link object } " is being used as a Pd atom, but it is neither a " { $link real } ", nor a Pd symbol, nor it can be converted to one." } ;
 
 HELP: bad-selector
-{ $values { "obj" object } }
+{ $values
+  { "obj" object }
+}
 { $description "Throws a " { $link bad-selector } " error." } 
 { $error-description "Thrown if an " { $link object } " is being used as a Pd selector, but it is neither a Pd symbol, nor it can be converted to one." } ;
 
