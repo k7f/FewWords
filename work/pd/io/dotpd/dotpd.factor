@@ -1,8 +1,8 @@
 ! Copyright (C) 2012 krzYszcz.
 ! See http://factorcode.org/license.txt for BSD license.
 
-USING: accessors io io.encodings.ascii io.files kernel pd.parser
-       pd.parser.dotpd pd.types sequences ;
+USING: accessors addenda.classes.tuple io io.encodings.ascii io.files kernel
+       pd.parser pd.parser.dotpd pd.types sequences ;
 IN: pd.io.dotpd
 
 <PRIVATE
@@ -37,8 +37,8 @@ PRIVATE>
 
 : eval-dotpd ( name -- root )
     load-dotpd [
-        [ <dotpd-root> ] [ f swap length iota ] bi
+        [ <dotpd-root> f ] [ length iota ] bi
     ] 2dip [
         rot pick pd-object? [ pick id<< ] [ drop ] if
         call( root parent obj -- root parent' )
-    ] 3each >>patch ;
+    ] 3each swap [ dup delete-all ] change-stack clone-as ;

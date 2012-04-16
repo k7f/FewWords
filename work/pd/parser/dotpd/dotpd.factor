@@ -5,13 +5,12 @@ USING: accessors addenda.classes.tuple arrays classes.tuple combinators
        kernel lexer math math.parser pd.types sequences vectors words ;
 IN: pd.parser.dotpd
 
-TUPLE: dotpd-root
+TUPLE: dotpd-root < pd-root
     { commands sequence }
-    { stack vector }
-    { patch maybe: pd-patch } ;
+    { stack vector } ;
 
 : <dotpd-root> ( commands -- root )
-    16 <vector> f dotpd-root boa ;
+    dotpd-root new 16 <vector> >>stack [ commands<< ] keep ;
 
 : push-patch ( patch root -- ) stack>> push ;
 : pop-patch  ( root -- patch ) stack>> pop ;
@@ -48,7 +47,7 @@ SYMBOLS:
     8 0 pad-tail pd-canvas-coords slots>tuple ;
 
 : parse-pd-subpatch ( selector -- subpatch )
-    drop +pd-pd+ parse-pd-box f 1array pd-subpatch new-derived ;
+    drop +pd-pd+ parse-pd-box f 1array pd-subpatch clone-as* ;
 
 <PRIVATE
 : (canvas-rect) ( patch tokens -- patch )
@@ -59,15 +58,16 @@ SYMBOLS:
     swap [ >>name ] dip
     5 swap nth string>number 0 = not >>vis ;
 
-: (canvas-props) ( patch tokens -- patch )
+: (canvas-props) ( patch tokens -- patch ? )
     4 over nth dup string>number [
-        2nip >integer >>fontsize
-    ] [ (subcanvas-props) ] if* ; inline
+        2nip >integer >>fontsize t
+    ] [ (subcanvas-props) f ] if* ; inline
 PRIVATE>
 
 : parse-pd-patch ( selector -- patch )
     drop <pd-patch> ";" parse-tokens
-    [ (canvas-rect) ] [ (canvas-props) ] bi ;
+    [ (canvas-rect) ] [ (canvas-props) ] bi
+    [ pd-root new clone-as ] when ;
 
 : parse-#X ( -- obj )
     parse-selector dup {

@@ -62,3 +62,7 @@ TUPLE: pd-subpatch < pd-box
 
 : <pd-patch> ( -- patch )
     pd-patch new V{ } [ clone >>boxes ] [ clone >>lines ] bi ;
+
+TUPLE: pd-root < pd-patch
+    { file-name string }
+    { file-dir string } ;
