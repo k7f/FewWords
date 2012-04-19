@@ -15,14 +15,15 @@ TUPLE: dotpd-root < pd-root
 : push-patch ( patch root -- ) stack>> push ;
 : pop-patch  ( root -- patch ) stack>> pop ;
 
-TUPLE: unknown-command target name selector ;
-: unknown-command ( name selector target -- * )
-    -rot \ unknown-command boa throw ;
+TUPLE: unknown-pd-command target name selector ;
+: unknown-pd-command ( name selector target -- * )
+    -rot \ unknown-pd-command boa throw ;
 
 SYMBOLS:
     +pd-canvas+ +pd-pd+
     +pd-obj+ +pd-msg+ +pd-text+ +pd-floatatom+ +pd-symbolatom+
-    +pd-connect+ +pd-array+ +pd-coords+ +pd-restore+ ;
+    +pd-connect+ +pd-array+ +pd-graph+
+    +pd-coords+ +pd-restore+ +pd-pop+ ;
 
 : parse-selector ( -- name selector/f )
     scan-token dup "+pd-" "+" surround
@@ -40,11 +41,26 @@ SYMBOLS:
 : parse-pd-array ( selector -- array )
     drop 0 scan-token ";" [ drop ] each-token pd-array boa ;
 
-: parse-pd-coords ( selector -- coords )
+: parse-pd-graph ( selector -- header )
+    drop scan-token ";" [ string>number >float ] map-tokens
+    4 cut [ pd-graph-coords slots>tuple ] bi@
+    pd-graph-header boa ;
+
+: parse-pd-pop ( selector -- subpatch )
+    drop ";" parse-tokens
+    ?first [ string>number 0 = not ] [ f ] if*
+    0 +pd-graph+ 0 0 f pd-box boa
+    f 1array pd-subpatch clone-as*
+    nip ;  ! FIXME swap >>vis
+
+: parse-pd-coords ( selector -- props )
     drop ";" [ string>number ] map-tokens
-    0 4 pick <slice> [ >float ] map! drop
-    6 over nth 0 = not 6 pick set-nth
-    8 0 pad-tail pd-canvas-coords slots>tuple ;
+    4 cut [
+        [ >float ] map! pd-graph-coords slots>tuple
+    ] dip
+    5 0 pad-tail 3 cut
+    [ first3 0 = not ] [ first2 ] bi* rot
+    pd-canvas-props boa ;
 
 : parse-pd-subpatch ( selector -- subpatch )
     drop +pd-pd+ parse-pd-box f 1array pd-subpatch clone-as* ;
@@ -78,15 +94,17 @@ PRIVATE>
         { +pd-symbolatom+ [ parse-pd-box ] }
         { +pd-connect+    [ parse-pd-line ] }
         { +pd-array+      [ parse-pd-array ] }
+        { +pd-graph+      [ parse-pd-graph ] }
         { +pd-coords+     [ parse-pd-coords ] }
         { +pd-restore+    [ parse-pd-subpatch ] }
-        [ drop "#X" unknown-command ]
+        { +pd-pop+        [ parse-pd-pop ] }
+        [ drop "#X" unknown-pd-command ]
     } case nip ;
 
 : parse-#N ( -- obj )
     parse-selector dup {
         { +pd-canvas+ [ parse-pd-patch ] }
-        [ drop "#N" unknown-command ]
+        [ drop "#N" unknown-pd-command ]
     } case nip ;
 
 <PRIVATE
@@ -104,7 +122,14 @@ M: pd-line (suffix!) ( root parent line -- root parent' )
 M: pd-array (suffix!) ( root parent array -- root parent' )
     (box-suffix!) ;
 
-M: pd-canvas-coords (suffix!) ( root parent coords -- root parent' )
+M: pd-graph-header (suffix!) ( root parent header -- root parent' )
+    [ name>> <pd-patch> swap >>name ]
+    [ coords>> ] [ pix-coords>> ] tri
+    drop 0 0 0 0  ! FIXME
+    t pd-canvas-props boa >>props
+    [ over push-patch ] dip ;
+
+M: pd-canvas-props (suffix!) ( root parent coords -- root parent' )
     >>props ;
 
 M: pd-subpatch (suffix!) ( root parent subpatch -- root parent' )

@@ -37,12 +37,20 @@ TUPLE: pd-array < pd-object
 
 INSTANCE: pd-array pd-gobject
 
-TUPLE: pd-canvas-coords
+TUPLE: pd-graph-coords
     { x0 float } { y0 float }
-    { x1 float } { y1 float }
+    { x1 float } { y1 float } ;
+
+TUPLE: pd-graph-header
+    { name string }
+    { coords pd-graph-coords }
+    { pix-coords pd-graph-coords } ;
+
+TUPLE: pd-canvas-props
+    { coords pd-graph-coords }
     { w integer } { h integer }
-    { gop boolean }
-    { xmargin integer } { ymargin integer } ;
+    { xmargin integer } { ymargin integer }
+    { gop boolean } ;
 
 TUPLE: pd-rect
     { x integer } { y integer }
@@ -53,7 +61,7 @@ TUPLE: pd-patch < pd-object
     { rect pd-rect }
     { fontsize integer }
     { vis boolean }
-    { props pd-canvas-coords }
+    { props pd-canvas-props }
     { boxes pd-glist }
     { lines pd-linkage } ;
 
