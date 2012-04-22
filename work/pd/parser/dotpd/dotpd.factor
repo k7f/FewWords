@@ -39,7 +39,7 @@ SYMBOLS:
     ";" [ drop ] each-token pd-line boa ;
 
 : parse-pd-array ( selector -- array )
-    drop 0 scan-token ";" [ drop ] each-token pd-array boa ;
+    drop 0 scan-token ";" [ drop ] each-token f pd-array boa ;
 
 : parse-pd-graph ( selector -- header )
     drop scan-token ";" [ string>number >float ] map-tokens
@@ -101,6 +101,11 @@ PRIVATE>
         [ drop "#X" unknown-pd-command ]
     } case nip ;
 
+: parse-#A ( -- obj )
+    scan-token string>number
+    ";" [ string>number >float ] map-tokens
+    pd-array-chunk boa ;
+
 : parse-#N ( -- obj )
     parse-selector dup {
         { +pd-canvas+ [ parse-pd-patch ] }
@@ -108,36 +113,57 @@ PRIVATE>
     } case nip ;
 
 <PRIVATE
-: (box-suffix!) ( root parent obj -- root parent' )
+: (box-post-process) ( root parent obj -- root parent' )
     [ suffix! ] curry change-boxes ;
 
-GENERIC: (suffix!) ( root parent obj -- root parent' )
+GENERIC: (post-process) ( root parent obj -- root parent' )
 
-M: pd-box (suffix!) ( root parent box -- root parent' )
-    (box-suffix!) ;
+M: pd-box (post-process) ( root parent box -- root parent' )
+    (box-post-process) ;
 
-M: pd-line (suffix!) ( root parent line -- root parent' )
+M: pd-line (post-process) ( root parent line -- root parent' )
     [ suffix! ] curry change-lines ;
 
-M: pd-array (suffix!) ( root parent array -- root parent' )
-    (box-suffix!) ;
+M: pd-array (post-process) ( root parent array -- root parent' )
+    (box-post-process) ;
 
-M: pd-graph-header (suffix!) ( root parent header -- root parent' )
+<PRIVATE
+: (fill-pd-array) ( chunk array -- )
+    [
+        [ chunk>> ] [ start>> ] bi
+    ] [
+        dup data>> [ nip ] [
+            V{ } clone [ swap data<< ] keep
+        ] if*
+    ] bi* copy ; inline
+
+ERROR: (empty-boxes) chunk ;
+ERROR: (not-an-array) chunk box ;
+PRIVATE>
+
+M: pd-array-chunk (post-process) ( root parent chunk -- root parent' )
+    over boxes>> ?last [
+        dup pd-array? [ (fill-pd-array) ] [ (not-an-array) ] if
+    ] [ (empty-boxes) ] if* ;
+
+M: pd-graph-header (post-process) ( root parent header -- root parent' )
     [ name>> <pd-patch> swap >>name ]
     [ coords>> ] [ pix-coords>> ] tri
     drop 0 0 0 0  ! FIXME
     t pd-canvas-props boa >>props
     [ over push-patch ] dip ;
 
-M: pd-canvas-props (suffix!) ( root parent coords -- root parent' )
+M: pd-canvas-props (post-process) ( root parent coords -- root parent' )
     >>props ;
 
-M: pd-subpatch (suffix!) ( root parent subpatch -- root parent' )
-    [ dup pop-patch ] [ ] [ swap >>patch ] tri* (box-suffix!) ;
+M: pd-subpatch (post-process) ( root parent subpatch -- root parent' )
+    [ dup pop-patch ] [ ] [ swap >>patch ] tri*
+    (box-post-process) ;
 
-: (new-parent) ( root old new -- root parent )
+M: pd-patch (post-process) ( root parent patch -- root parent' )
     [ over push-patch ] dip ;
 PRIVATE>
 
-SYNTAX: #X parse-#X suffix! [ (suffix!) ] suffix! ;
-SYNTAX: #N parse-#N suffix! [ (new-parent) ] suffix! ;
+SYNTAX: #X parse-#X suffix! [ (post-process) ] suffix! ;
+SYNTAX: #A parse-#A suffix! [ (post-process) ] suffix! ;
+SYNTAX: #N parse-#N suffix! [ (post-process) ] suffix! ;

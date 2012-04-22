@@ -33,9 +33,14 @@ PREDICATE: pd-linkage < sequence
     ?first [ pd-line? ] [ t ] if* ;
 
 TUPLE: pd-array < pd-object
-    { name string } ;
+    { name string }
+    { data sequence } ;
 
 INSTANCE: pd-array pd-gobject
+
+TUPLE: pd-array-chunk
+    { start integer }
+    { chunk sequence } ;
 
 TUPLE: pd-graph-coords
     { x0 float } { y0 float }
