@@ -2,7 +2,7 @@
 ! See http://factorcode.org/license.txt for BSD license.
 
 USING: accessors addenda.classes.tuple arrays classes.tuple combinators
-       kernel lexer math math.parser pd.types sequences vectors words ;
+       kernel lexer locals math math.parser pd.types sequences vectors words ;
 IN: pd.parser.dotpd
 
 TUPLE: dotpd-root < pd-root
@@ -43,24 +43,28 @@ SYMBOLS:
 
 : parse-pd-graph ( selector -- header )
     drop scan-token ";" [ string>number >float ] map-tokens
-    4 cut [ pd-graph-coords slots>tuple ] bi@
+    4 cut [ make-pd-coords ] bi@
     pd-graph-header boa ;
 
 : parse-pd-pop ( selector -- subpatch )
     drop ";" parse-tokens
     ?first [ string>number 0 = not ] [ f ] if*
+    <pd-canvas-props> swap >>vis
     0 +pd-graph+ 0 0 f pd-box boa
-    f 1array pd-subpatch clone-as*
-    nip ;  ! FIXME swap >>vis
+    f 1array pd-subpatch clone-as* swap >>props ;
 
+! FIXME refactor
 : parse-pd-coords ( selector -- props )
     drop ";" [ string>number ] map-tokens
     4 cut [
-        [ >float ] map! pd-graph-coords slots>tuple
-    ] dip
-    5 0 pad-tail 3 cut
-    [ first3 0 = not ] [ first2 ] bi* rot
-    pd-canvas-props boa ;
+        [ >float ] map! make-pd-coords
+    ] [
+        5 0 pad-tail 2 cut [
+            0 0 rot first2 <pd-rect>
+        ] [
+            unclip [ first2 ] [ 0 = not ] bi*
+        ] bi*
+    ] bi* f swap pd-canvas-props boa ;
 
 : parse-pd-subpatch ( selector -- subpatch )
     drop +pd-pd+ parse-pd-box f 1array pd-subpatch clone-as* ;
@@ -68,11 +72,12 @@ SYMBOLS:
 <PRIVATE
 : (canvas-rect) ( patch tokens -- patch )
     0 4 rot <slice> [ string>number >integer ] map!
-    pd-rect slots>tuple >>rect ; inline
+    make-pd-rect >>rect ; inline
 
 : (subcanvas-props) ( patch tokens name -- patch )
     swap [ >>name ] dip
-    5 swap nth string>number 0 = not >>vis ;
+    5 swap nth string>number 0 = not
+    [ >>vis ] curry change-props ;
 
 : (canvas-props) ( patch tokens -- patch ? )
     4 over nth dup string>number [
@@ -149,16 +154,26 @@ M: pd-array-chunk (post-process) ( root parent chunk -- root parent' )
 M: pd-graph-header (post-process) ( root parent header -- root parent' )
     [ name>> <pd-patch> swap >>name ]
     [ coords>> ] [ pix-coords>> ] tri
-    drop 0 0 0 0  ! FIXME
-    t pd-canvas-props boa >>props
+    pd-coords>pd-rect 0 0 f t pd-canvas-props boa >>props
     [ over push-patch ] dip ;
 
 M: pd-canvas-props (post-process) ( root parent coords -- root parent' )
     >>props ;
 
+<PRIVATE
+: (vis-transfer) ( props subpatch -- )
+    [ vis>> ] [ patch>> props>> ] bi* vis<< ; inline
+
+: (xy-transfer) ( props subpatch -- )
+    nip [ patch>> props>> pix-rect>> [ x>> ] [ y>> ] bi ]
+    [ [ y<< ] [ x<< ] bi ] bi ; inline
+PRIVATE>
+
 M: pd-subpatch (post-process) ( root parent subpatch -- root parent' )
     [ dup pop-patch ] [ ] [ swap >>patch ] tri*
-    (box-post-process) ;
+    dup props>> [
+        over [ (vis-transfer) ] [ (xy-transfer) ] 2bi
+    ] when* (box-post-process) ;
 
 M: pd-patch (post-process) ( root parent patch -- root parent' )
     [ over push-patch ] dip ;

@@ -1,7 +1,8 @@
 ! Copyright (C) 2012 krzYszcz.
 ! See http://factorcode.org/license.txt for BSD license.
 
-USING: accessors kernel math sequences strings words.symbol ;
+USING: accessors classes.tuple kernel locals math sequences strings
+       words.symbol ;
 IN: pd.types
 
 TUPLE: pd-object { id integer } ;
@@ -42,35 +43,68 @@ TUPLE: pd-array-chunk
     { start integer }
     { chunk sequence } ;
 
-TUPLE: pd-graph-coords
+TUPLE: pd-coords
     { x0 float } { y0 float }
     { x1 float } { y1 float } ;
 
-TUPLE: pd-graph-header
-    { name string }
-    { coords pd-graph-coords }
-    { pix-coords pd-graph-coords } ;
-
-TUPLE: pd-canvas-props
-    { coords pd-graph-coords }
-    { w integer } { h integer }
-    { xmargin integer } { ymargin integer }
-    { gop boolean } ;
+C: <pd-coords> pd-coords
+: make-pd-coords ( seq -- coords ) pd-coords slots>tuple ;
+: >pd-coords< ( coords -- x0 y0 x1 y1 ) tuple-slots first4 ;
 
 TUPLE: pd-rect
     { x integer } { y integer }
     { w integer } { h integer } ;
 
+C: <pd-rect> pd-rect
+: make-pd-rect ( seq -- rect ) pd-rect slots>tuple ;
+: >pd-rect< ( coords -- x y w h ) tuple-slots first4 ;
+
+<PRIVATE
+CONSTANT: +DEF-GRAPH-WIDTH+  200
+CONSTANT: +DEF-GRAPH-HEIGHT+ 140
+
+! cf glist_addglist()
+:: (normalize-pix-coords) ( px0 py0 px1 py1 -- px py pw ph )
+    px0 px1 >= [ py0 py1 = ] unless* [
+        100 20 +DEF-GRAPH-WIDTH+ +DEF-GRAPH-HEIGHT+
+    ] [
+        px0 px1 over -
+        py0 py1 2dup > [ swap ] when over - swapd
+    ] if ;
+PRIVATE>
+
+: pd-coords>pd-rect ( coords -- rect )
+    >pd-coords< (normalize-pix-coords) <pd-rect> ;
+
+TUPLE: pd-graph-header
+    { name string }
+    { coords pd-coords }
+    { pix-coords pd-coords } ;
+
+! pix-rect: on-parent
+TUPLE: pd-canvas-props
+    { coords pd-coords }
+    { pix-rect pd-rect }
+    { xmargin integer }
+    { ymargin integer }
+    { vis boolean }
+    { gop boolean } ;
+
+: <pd-canvas-props> ( -- props )
+    pd-canvas-props new ;
+
+! rect: on-screen
 TUPLE: pd-patch < pd-object
     { name string }
     { rect pd-rect }
     { fontsize integer }
-    { vis boolean }
     { props pd-canvas-props }
     { boxes pd-glist }
     { lines pd-linkage } ;
 
+! props: temporary storage of graph props transferred to patch props during post-processing
 TUPLE: pd-subpatch < pd-box
+    { props maybe: pd-canvas-props }
     { patch maybe: pd-patch } ;
 
 : <pd-patch> ( -- patch )
