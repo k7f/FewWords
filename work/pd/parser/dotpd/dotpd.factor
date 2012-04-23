@@ -1,8 +1,8 @@
 ! Copyright (C) 2012 krzYszcz.
 ! See http://factorcode.org/license.txt for BSD license.
 
-USING: accessors addenda.classes.tuple arrays classes.tuple combinators
-       kernel lexer locals math math.parser pd.types sequences vectors words ;
+USING: accessors addenda.classes.tuple arrays assocs combinators kernel lexer
+       math math.parser pd.types sequences vectors words ;
 IN: pd.parser.dotpd
 
 TUPLE: dotpd-root < pd-root
@@ -10,7 +10,8 @@ TUPLE: dotpd-root < pd-root
     { stack vector } ;
 
 : <dotpd-root> ( commands -- root )
-    dotpd-root new 16 <vector> >>stack [ commands<< ] keep ;
+    dotpd-root new-pd-root
+    16 <vector> >>stack [ commands<< ] keep ;
 
 : push-patch ( patch root -- ) stack>> push ;
 : pop-patch  ( root -- patch ) stack>> pop ;
@@ -20,9 +21,9 @@ TUPLE: unknown-pd-command target name selector ;
     -rot \ unknown-pd-command boa throw ;
 
 SYMBOLS:
-    +pd-canvas+ +pd-pd+
+    +pd-canvas+ +pd-pd+ +pd-struct+
     +pd-obj+ +pd-msg+ +pd-text+ +pd-floatatom+ +pd-symbolatom+
-    +pd-connect+ +pd-array+ +pd-graph+
+    +pd-connect+ +pd-scalar+ +pd-array+ +pd-graph+
     +pd-coords+ +pd-restore+ +pd-pop+ ;
 
 : parse-selector ( -- name selector/f )
@@ -37,6 +38,9 @@ SYMBOLS:
     drop 0 scan-token string>number scan-token string>number
     scan-token string>number scan-token string>number
     ";" [ drop ] each-token pd-line boa ;
+
+: parse-pd-scalar ( selector -- scalar )
+    drop 0 scan-token ";" [ drop ] each-token <pd-scalar> ;
 
 : parse-pd-array ( selector -- array )
     drop 0 scan-token ";" [ drop ] each-token f pd-array boa ;
@@ -90,6 +94,9 @@ PRIVATE>
     [ (canvas-rect) ] [ (canvas-props) ] bi
     [ pd-root new clone-as ] when ;
 
+: parse-pd-struct ( selector -- struct )
+    drop scan-token ";" parse-tokens <pd-struct> ;
+
 : parse-#X ( -- obj )
     parse-selector dup {
         { +pd-obj+        [ parse-pd-box ] }
@@ -98,6 +105,7 @@ PRIVATE>
         { +pd-floatatom+  [ parse-pd-box ] }
         { +pd-symbolatom+ [ parse-pd-box ] }
         { +pd-connect+    [ parse-pd-line ] }
+        { +pd-scalar+     [ parse-pd-scalar ] }
         { +pd-array+      [ parse-pd-array ] }
         { +pd-graph+      [ parse-pd-graph ] }
         { +pd-coords+     [ parse-pd-coords ] }
@@ -114,6 +122,7 @@ PRIVATE>
 : parse-#N ( -- obj )
     parse-selector dup {
         { +pd-canvas+ [ parse-pd-patch ] }
+        { +pd-struct+ [ parse-pd-struct ] }
         [ drop "#N" unknown-pd-command ]
     } case nip ;
 
@@ -128,6 +137,9 @@ M: pd-box (post-process) ( root parent box -- root parent' )
 
 M: pd-line (post-process) ( root parent line -- root parent' )
     [ suffix! ] curry change-lines ;
+
+M: pd-scalar (post-process) ( root parent scalar -- root parent' )
+    drop ;  ! FIXME
 
 M: pd-array (post-process) ( root parent array -- root parent' )
     (box-post-process) ;
@@ -177,6 +189,10 @@ M: pd-subpatch (post-process) ( root parent subpatch -- root parent' )
 
 M: pd-patch (post-process) ( root parent patch -- root parent' )
     [ over push-patch ] dip ;
+
+M: pd-struct (post-process) ( root parent struct -- root parent' )
+    pick struct-defs>>
+    [ [ slots>> ] [ name>> ] bi ] dip set-at ;
 PRIVATE>
 
 SYNTAX: #X parse-#X suffix! [ (post-process) ] suffix! ;

@@ -35,6 +35,7 @@ PRIVATE>
         [ parse-command ] 2curry each
     ] 3keep ;
 
+! FIXME refactor
 : eval-dotpd ( name -- root )
     [
         load-dotpd [
@@ -42,5 +43,9 @@ PRIVATE>
         ] 2dip [
             rot pick pd-object? [ pick id<< ] [ drop ] if
             call( root parent obj -- root parent' )
-        ] 3each swap [ dup delete-all ] change-stack clone-as
+        ] 3each swap
+        [ dup delete-all ] change-stack
+        dup struct-defs>> [
+            clone-as
+        ] dip >>struct-defs  ! FIXME merge into a global dict
     ] keep [ file-name >>file-name ] [ parent-directory >>file-dir ] 2bi drop ;
