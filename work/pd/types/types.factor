@@ -16,7 +16,7 @@ PREDICATE: pd-binbuf < sequence
     ?first [ pd-atom? ] [ t ] if* ;
 
 TUPLE: pd-box < pd-object
-    { selector maybe: symbol }
+    { selector maybe{ symbol } }
     { x integer }
     { y integer }
     { args pd-binbuf } ;
@@ -146,8 +146,8 @@ TUPLE: pd-patch < pd-object
 
 ! props: temporary storage of graph props transferred to patch props during post-processing
 TUPLE: pd-subpatch < pd-box
-    { props maybe: pd-canvas-props }
-    { patch maybe: pd-patch } ;
+    { props maybe{ pd-canvas-props } }
+    { patch maybe{ pd-patch } } ;
 
 TUPLE: pd-root < pd-patch
     { file-name string }
